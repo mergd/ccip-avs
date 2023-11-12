@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {IUniswapV2Router02} from "./interfaces/IUniswapV2Router02.sol";
+import {IUniswapV2Router02} from "src/interfaces/IUniswapV2Router02.sol";
 
 contract MockUniswap is IUniswapV2Router02 {
+    constructor() {}
+
     function getAmountsOut(uint256 amountIn, address[] calldata path)
         external
         view
@@ -158,6 +160,4 @@ contract MockUniswap is IUniswapV2Router02 {
         override
         returns (uint256[] memory amounts)
     {}
-
-   
 }

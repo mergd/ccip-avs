@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {IQuoterV2} from "./interfaces/IQuoterV2.sol";
-import {IUniswapV2Router02} from "./interfaces/IUniswapV2Router02.sol";
+import {IQuoterV2} from "src/interfaces/IQuoterV2.sol";
+import {IUniswapV2Router02} from "src/interfaces/IUniswapV2Router02.sol";
 import {CurveFi} from "src/interfaces/ICurveInterface.sol";
-import "balancer-v2-monorepo/pkg/interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
-import {ERC20Mock} from "./ERC20Mock.sol";
+// import "balancer-v2-monorepo/pkg/interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
+import {ERC20Mock} from "src/ERC20Mock.sol";
 import "landingprotocol/src/ILoanCoordinator.sol";
 
 /**
@@ -87,23 +87,23 @@ contract OnchainDepthOracle {
                 depthOut += amountOut;
                 depthIn += amount;
             } else if (venue.typeExch == ExchangeType.BALANCERv2) {
-                IMinimalSwapInfoPool balancer = IMinimalSwapInfoPool(venue.exchange);
-                IPoolSwapStructs.SwapRequest memory request = IPoolSwapStructs.SwapRequest(
-                    IVault.SwapKind.GIVEN_IN,
-                    IERC20(tkn),
-                    IERC20(address(weth)),
-                    amount,
-                    0,
-                    0,
-                    address(this),
-                    address(this),
-                    ""
-                );
+                // IMinimalSwapInfoPool balancer = IMinimalSwapInfoPool(venue.exchange);
+                // IPoolSwapStructs.SwapRequest memory request = IPoolSwapStructs.SwapRequest(
+                //     IVault.SwapKind.GIVEN_IN,
+                //     IERC20(tkn),
+                //     IERC20(address(weth)),
+                //     amount,
+                //     0,
+                //     0,
+                //     address(this),
+                //     address(this),
+                //     ""
+                // );
 
-                uint256 amountOut = balancer.onSwap(request, 0, 0);
-                deepest = max(deepest, amountOut);
-                depthOut += amountOut;
-                depthIn += amount;
+                // uint256 amountOut = balancer.onSwap(request, 0, 0);
+                // deepest = max(deepest, amountOut);
+                // depthOut += amountOut;
+                // depthIn += amount;
             }
         }
     }

@@ -1,5 +1,7 @@
 # Incredible Squaring AVS
 
+todo: work on
+
 <b> Do not use it in Production, testnet only. </b>
 
 Basic repo demoing a simple AVS middleware with full eigenlayer integration. See this [video walkthrough](https://www.loom.com/share/50314b3ec0f34e2ba386d45724602d76?sid=9d68d8cb-d2d5-4123-bd06-776de2076de0).
@@ -7,6 +9,7 @@ Basic repo demoing a simple AVS middleware with full eigenlayer integration. See
 ## Dependencies
 
 You will need [foundry](https://book.getfoundry.sh/getting-started/installation) and [zap-pretty](https://github.com/maoueh/zap-pretty) to run the examples below.
+
 ```
 curl -L https://foundry.paradigm.xyz | bash
 foundryup
@@ -81,6 +84,7 @@ Below is a more detailed uml diagram of the aggregator and operator processes:
 ## Avs node spec compliance
 
 Every AVS node implementation is required to abide by the [Eigenlayer AVS Node Specification](https://eigen.nethermind.io/). We suggest reading through the whole spec, including the keys management section, but the hard requirements are currently only to:
+
 - implement the [AVS Node API](https://eigen.nethermind.io/docs/category/avs-node-api)
 - implement the [eigen prometheus metrics](https://eigen.nethermind.io/docs/category/metrics)
 

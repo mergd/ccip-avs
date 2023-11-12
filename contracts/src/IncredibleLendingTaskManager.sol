@@ -14,7 +14,7 @@ import {BLSOperatorStateRetriever} from "@eigenlayer-middleware/src/BLSOperatorS
 import "@eigenlayer/contracts/libraries/BN254.sol";
 import "./IncredibleLendingProtocol.sol";
 import "./IIncredibleLendingTaskManager.sol";
-import {OnchainDepthOracle} from "./OnchainDepthOracle.sol";
+import {OnchainDepthOracle} from "src/OnchainDepthOracle.sol";
 
 contract IncredibleLendingTaskManager is
     Initializable,
