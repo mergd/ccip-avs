@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {IQuoterV2} from "v3-periphery/interfaces/IQuoterV2.sol";
-import {IUniswapV2Router02} from "v2-periphery/interfaces/IUniswapV2Router02.sol";
+import {IQuoterV2} from "./interfaces/IQuoterV2.sol";
+import {IUniswapV2Router02} from "./interfaces/IUniswapV2Router02.sol";
 import {CurveFi} from "src/interfaces/ICurveInterface.sol";
 import "balancer-v2-monorepo/pkg/interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Mock} from "./ERC20Mock.sol";
+import "landingprotocol/src/ILoanCoordinator.sol";
+
 /**
  * @title OnChainDepthOracle
  * @author gracked

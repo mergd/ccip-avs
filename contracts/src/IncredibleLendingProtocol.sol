@@ -18,6 +18,7 @@ contract IncredibleLendingProtocol is ReadHandler, Lender {
 
     IncredibleLendingTaskManager public taskManager;
     uint256 quorumNumbers = 1;
+    uint32 thresholdPctg = 1e6;
 
     constructor(
         string[] memory _urls,
@@ -84,7 +85,22 @@ contract IncredibleLendingProtocol is ReadHandler, Lender {
         onlyCoordinator
         returns (bytes4)
     {
+        if (data.length == 0) {
+            revert OffchainLookup(
+                msg.sender,
+                urls,
+                abi.encodeWithSelector(Gateway.onchainDepth.selector, loan.collateralToken, loan.collateralAmount),
+                Gateway.createLoanCallback.selector,
+                abi.encode(loan.debtAmount, loan.collateralAmount)
+            );
+        } else if (!_validCalc(loan.debtAmount, data)) {
+            revert("Invalid Calculation");
+        } else {
+            // Create task
+            taskManager.createNewTask(loan.debtAmount, loan.collateralAmount, address(loan.debtToken), thresholdPctg, '');
+
         return Lender.verifyLoan.selector;
+        }
     }
 
     function viewVerifyLoan(ILoanCoordinator.Loan memory loan, bytes calldata data)
@@ -104,8 +120,7 @@ contract IncredibleLendingProtocol is ReadHandler, Lender {
         } else if (!_validCalc(loan.debtAmount, data)) {
             revert("Invalid Calculation");
         } else {
-            // Create task
-            taskManager.createNewTask(loan.debtAmount, loan.collateralAmount, loan.debtToken, quorumNumbers);
+            
             return true;
         }
     }
@@ -123,5 +138,4 @@ contract IncredibleLendingProtocol is ReadHandler, Lender {
 
     function loanRepaidHook(ILoanCoordinator.Loan memory loan) external override returns (bytes4) {}
 
-    function getQuote(ILoanCoordinator.Loan memory loan) external view override returns (uint256, uint256, uint256);
 }

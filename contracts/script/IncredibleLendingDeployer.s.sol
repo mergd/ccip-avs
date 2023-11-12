@@ -9,7 +9,7 @@ import {IStrategyManager, IStrategy} from "@eigenlayer/contracts/interfaces/IStr
 import {ISlasher} from "@eigenlayer/contracts/interfaces/ISlasher.sol";
 import {StrategyBaseTVLLimits} from "@eigenlayer/contracts/strategies/StrategyBaseTVLLimits.sol";
 import "@eigenlayer/test/mocks/EmptyContract.sol";
-import {LoanCoordinator} from "landingprotocol/src/LoanCoordinator.sol";
+import {LoanCoordinator, ERC20} from "landingprotocol/src/LoanCoordinator.sol";
 
 import {BLSPublicKeyCompendium} from "@eigenlayer-middleware/src/BLSPublicKeyCompendium.sol";
 import "@eigenlayer-middleware/src/BLSRegistryCoordinatorWithIndices.sol" as blsregcoord;
@@ -74,19 +74,19 @@ contract CredibleLendingDeployer is Script, Utils {
     OnchainDepthOracle public onchainDepthOracle;
     IncredibleLendingProtocol public incredibleLendingProtocol;
     ILoanCoordinator public loanCoordinator;
-    ERC20Mock public mockCollateral;
-    ERC20Mock public mockWETH;
+    ERC20 public mockCollateral;
+    ERC20 public mockWETH;
 
     function run() external {
         // Lending contracts
-        mockCollateral = new ERC20Mock();
-        mockWETH = new ERC20Mock();
+        mockCollateral = ERC20(address(new ERC20Mock()));
+        mockWETH = ERC20(address(new ERC20Mock()));
         loanCoordinator = new LoanCoordinator();
-        onchainDepthOracle = new OnchainDepthOracle(IERC20(address(mockWETH)));
+        onchainDepthOracle = new OnchainDepthOracle(mockWETH);
         incredibleLendingProtocol = new IncredibleLendingProtocol(
             new string[](0),
-            IERC20(address(mockWETH)),
-            IERC20(address(mockCollateral)),
+            mockWETH,
+            mockCollateral,
             loanCoordinator,
             TASK_GENERATOR_ADDR);
 

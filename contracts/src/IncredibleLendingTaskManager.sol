@@ -159,7 +159,7 @@ contract IncredibleLendingTaskManager is
         allTaskResponses[taskResponse.referenceTaskIndex] = keccak256(abi.encode(taskResponse, taskResponseMetadata));
 
         // callback to the contract to pause
-        bool res = abi.decode(taskResponse, (bool));
+        bool res = abi.decode(taskResponse.response, (bool));
         if (!res) {
             // Initial call was wrong, pause the contract
             lendingprotocol.togglePause();
@@ -199,7 +199,7 @@ contract IncredibleLendingTaskManager is
             "The challenge period for this task has already expired."
         );
 
-        (uint256 debtAmt, uint256 collateralAmt, address token) = abi.decode(task, (uint256, uint256, address));
+        (uint256 debtAmt, uint256 collateralAmt, address token) = abi.decode(task.taskData, (uint256, uint256, address));
 
         // logic for checking whether challenge is valid or not
         bool isResponseCorrect = onchainDepthOracle.testDepth(debtAmt, collateralAmt, token);

@@ -1,0 +1,77 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.12;
+
+// import "../src/IncredibleLendingServiceManager.sol" as incsqsm;
+// import {IncredibleLendingTaskManager} from "../src/IncredibleLendingTaskManager.sol";
+// import {BLSMockAVSDeployer} from "@eigenlayer-middleware/test/utils/BLSMockAVSDeployer.sol";
+// import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+// import {IncredibleLendingProtocol, ILoanCoordinator} from "src/IncredibleLendingProtocol.sol";
+// import "src/ERC20Mock.sol";
+// import {OnchainDepthOracle} from "src/OnChainDepthOracle.sol";
+// import {LoanCoordinator, ERC20} from "landingprotocol/src/LoanCoordinator.sol";
+
+// contract IncredibleLendingTaskManagerTest is BLSMockAVSDeployer {
+//     address owner = address(1);
+//     incsqsm.IncredibleLendingServiceManager sm;
+//     incsqsm.IncredibleLendingServiceManager smImplementation;
+//     IncredibleLendingTaskManager tm;
+//     IncredibleLendingTaskManager tmImplementation;
+//     LoanCoordinator lc;
+//     IncredibleLendingProtocol lp;
+//     OnchainDepthOracle oracle;
+//     IERC20 mockCollateral;
+//     IERC20 mockWETH;
+//     uint32 public constant TASK_RESPONSE_WINDOW_BLOCK = 30;
+//     address aggregator = address(uint160(uint256(keccak256(abi.encodePacked("aggregator")))));
+//     address generator = address(uint160(uint256(keccak256(abi.encodePacked("generator")))));
+
+//     function setUp() public {
+//         _setUpBLSMockAVSDeployer();
+//         lc = new LoanCoordinator();
+//         mockCollateral = ERC20(address(new ERC20Mock()));
+//         mockWETH = ERC20(address(new ERC20Mock()));
+//         lp = new IncredibleLendingProtocol(
+//             new string[](0),
+//             mockCollateral,
+//             mockWETH,
+//             lc,
+//             owner
+//         );
+//         oracle = new OnchainDepthOracle(mockWETH);
+
+//         tmImplementation = new IncredibleLendingTaskManager(
+//             incsqsm.IBLSRegistryCoordinatorWithIndices(
+//                 address(registryCoordinator)
+//             ),
+//             TASK_RESPONSE_WINDOW_BLOCK
+//         );
+
+//         // Third, upgrade the proxy contracts to use the correct implementation contracts and initialize them.
+//         tm = IncredibleLendingTaskManager(
+//             address(
+//                 new TransparentUpgradeableProxy(
+//                     address(tmImplementation),
+//                     address(proxyAdmin),
+//                     abi.encodeWithSelector(
+//                         tm.initialize.selector,
+//                         lp,
+//                         oracle,
+//                         pauserRegistry,
+//                         serviceManagerOwner,
+//                         aggregator,
+//                         generator
+//                     )
+//                 )
+//             )
+//         );
+
+//         lp.setTaskManager(tm);
+//     }
+
+//     // function testCreateNewTask() public {
+//     //     bytes memory quorumNumbers = new bytes(0);
+//     //     cheats.prank(generator, generator);
+//     //     tm.createNewTask(2, 100, quorumNumbers);
+//     //     assertEq(tm.latestTaskNum(), 1);
+//     // }
+// }

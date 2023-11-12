@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import {IUniswapV2Router02} from "v2-periphery/interfaces/IUniswapV2Router02.sol";
+import {IUniswapV2Router02} from "./interfaces/IUniswapV2Router02.sol";
 
 contract MockUniswap is IUniswapV2Router02 {
     function getAmountsOut(uint256 amountIn, address[] calldata path)
@@ -159,48 +159,5 @@ contract MockUniswap is IUniswapV2Router02 {
         returns (uint256[] memory amounts)
     {}
 
-    function removeLiquidityETHSupportingFeeOnTransferTokens(
-        address token,
-        uint256 liquidity,
-        uint256 amountTokenMin,
-        uint256 amountETHMin,
-        address to,
-        uint256 deadline
-    ) external override returns (uint256 amountETH) {}
-
-    function removeLiquidityETHWithPermitSupportingFeeOnTransferTokens(
-        address token,
-        uint256 liquidity,
-        uint256 amountTokenMin,
-        uint256 amountETHMin,
-        address to,
-        uint256 deadline,
-        bool approveMax,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external override returns (uint256 amountETH) {}
-
-    function swapExactTokensForTokensSupportingFeeOnTransferTokens(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external override {}
-
-    function swapExactETHForTokensSupportingFeeOnTransferTokens(
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external payable override {}
-
-    function swapExactTokensForETHSupportingFeeOnTransferTokens(
-        uint256 amountIn,
-        uint256 amountOutMin,
-        address[] calldata path,
-        address to,
-        uint256 deadline
-    ) external override {}
+   
 }
