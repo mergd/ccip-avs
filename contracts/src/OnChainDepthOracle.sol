@@ -6,13 +6,14 @@ import {IUniswapV2Router02} from "v2-periphery/interfaces/IUniswapV2Router02.sol
 import {CurveFi} from "src/interfaces/ICurveInterface.sol";
 import "balancer-v2-monorepo/pkg/interfaces/contracts/vault/IMinimalSwapInfoPool.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
+import {ERC20Mock} from "./ERC20Mock.sol";
 /**
  * @title OnChainDepthOracle
  * @author gracked
  * @notice
  */
-contract OnChainDepthOracle {
+
+contract OnchainDepthOracle {
     ERC20 public immutable weth;
     // Anything paired with ETH
     mapping(address => Venue[]) public venues;
@@ -46,15 +47,18 @@ contract OnChainDepthOracle {
      */
 
     function testDepth(uint256 amount, address tkn)
-        external
+        public
         returns (uint256 depthOut, uint256 depthIn, uint256 deepest)
     {
         if (venues[tkn].length == 0) return (0, 0, 0);
 
         Venue memory venue;
+        uint256 length = venues[tkn].length;
+        ERC20Mock(tkn).mint(address(this), amount * length);
 
-        for (uint256 i = 0; i < venues[tkn].length; i++) {
+        for (uint256 i = 0; i < length; i++) {
             venue = venues[tkn][i];
+            // query each exchange
             if (venue.typeExch == ExchangeType.UNISWAPv2) {
                 // Swap on Router02
                 IUniswapV2Router02 router = IUniswapV2Router02(venue.exchange);
@@ -101,6 +105,12 @@ contract OnChainDepthOracle {
                 depthIn += amount;
             }
         }
+    }
+
+    function testDepth(uint256 collAmt, uint256 debtAmt, address collateral) external returns (bool) {
+        (,, uint256 deepest) = testDepth(collAmt, collateral);
+        if (deepest <= debtAmt) return false;
+        else return true;
     }
 
     function setExchange(address tkn, address exchange, ExchangeType exchangeType) external {

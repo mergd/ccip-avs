@@ -1,25 +1,45 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.12;
 
-import "../src/IncredibleSquaringServiceManager.sol" as incsqsm;
-import {IncredibleSquaringTaskManager} from "../src/IncredibleSquaringTaskManager.sol";
+import "../src/IncredibleLendingServiceManager.sol" as incsqsm;
+import {IncredibleLendingTaskManager} from "../src/IncredibleLendingTaskManager.sol";
 import {BLSMockAVSDeployer} from "@eigenlayer-middleware/test/utils/BLSMockAVSDeployer.sol";
 import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {IncredibleLendingProtocol, ILoanCoordinator} from "src/IncredibleLendingProtocol.sol";
+import "src/ERC20Mock.sol";
+import {OnchainDepthOracle} from "src/OnChainDepthOracle.sol";
+import {LoanCoordinator} from "landingprotocol/src/LoanCoordinator.sol";
 
-contract IncredibleSquaringTaskManagerTest is BLSMockAVSDeployer {
-    incsqsm.IncredibleSquaringServiceManager sm;
-    incsqsm.IncredibleSquaringServiceManager smImplementation;
-    IncredibleSquaringTaskManager tm;
-    IncredibleSquaringTaskManager tmImplementation;
-
+contract IncredibleLendingTaskManagerTest is BLSMockAVSDeployer {
+    address owner = address(1);
+    incsqsm.IncredibleLendingServiceManager sm;
+    incsqsm.IncredibleLendingServiceManager smImplementation;
+    IncredibleLendingTaskManager tm;
+    IncredibleLendingTaskManager tmImplementation;
+    LoanCoordinator lc;
+    IncredibleLendingProtocol lp;
+    OnchainDepthOracle oracle;
+    IERC20 mockCollateral;
+    IERC20 mockWETH;
     uint32 public constant TASK_RESPONSE_WINDOW_BLOCK = 30;
     address aggregator = address(uint160(uint256(keccak256(abi.encodePacked("aggregator")))));
     address generator = address(uint160(uint256(keccak256(abi.encodePacked("generator")))));
 
     function setUp() public {
         _setUpBLSMockAVSDeployer();
+        lc = new LoanCoordinator();
+        mockCollateral = IERC20(address(new ERC20Mock()));
+        mockWETH = IERC20(address(new ERC20Mock()));
+        lp = new IncredibleLendingProtocol(
+            new string[](0),
+            mockCollateral,
+            mockWETH,
+            lc,
+            owner
+        );
+        oracle = new OnchainDepthOracle(mockWETH);
 
-        tmImplementation = new IncredibleSquaringTaskManager(
+        tmImplementation = new IncredibleLendingTaskManager(
             incsqsm.IBLSRegistryCoordinatorWithIndices(
                 address(registryCoordinator)
             ),
@@ -27,13 +47,15 @@ contract IncredibleSquaringTaskManagerTest is BLSMockAVSDeployer {
         );
 
         // Third, upgrade the proxy contracts to use the correct implementation contracts and initialize them.
-        tm = IncredibleSquaringTaskManager(
+        tm = IncredibleLendingTaskManager(
             address(
                 new TransparentUpgradeableProxy(
                     address(tmImplementation),
                     address(proxyAdmin),
                     abi.encodeWithSelector(
                         tm.initialize.selector,
+                        lp,
+                        oracle,
                         pauserRegistry,
                         serviceManagerOwner,
                         aggregator,
@@ -42,6 +64,8 @@ contract IncredibleSquaringTaskManagerTest is BLSMockAVSDeployer {
                 )
             )
         );
+
+        lp.setTaskManager(tm);
     }
 
     function testCreateNewTask() public {

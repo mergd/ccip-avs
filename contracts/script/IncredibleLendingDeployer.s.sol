@@ -9,6 +9,7 @@ import {IStrategyManager, IStrategy} from "@eigenlayer/contracts/interfaces/IStr
 import {ISlasher} from "@eigenlayer/contracts/interfaces/ISlasher.sol";
 import {StrategyBaseTVLLimits} from "@eigenlayer/contracts/strategies/StrategyBaseTVLLimits.sol";
 import "@eigenlayer/test/mocks/EmptyContract.sol";
+import {LoanCoordinator} from "landingprotocol/src/LoanCoordinator.sol";
 
 import {BLSPublicKeyCompendium} from "@eigenlayer-middleware/src/BLSPublicKeyCompendium.sol";
 import "@eigenlayer-middleware/src/BLSRegistryCoordinatorWithIndices.sol" as blsregcoord;
@@ -17,10 +18,12 @@ import {IndexRegistry, IIndexRegistry} from "@eigenlayer-middleware/src/IndexReg
 import {StakeRegistry, IStakeRegistry} from "@eigenlayer-middleware/src/StakeRegistry.sol";
 import {IVoteWeigher} from "@eigenlayer-middleware/src/interfaces/IVoteWeigher.sol";
 
-import {IncredibleSquaringServiceManager, IServiceManager} from "../src/IncredibleSquaringServiceManager.sol";
-import {IncredibleSquaringTaskManager} from "../src/IncredibleSquaringTaskManager.sol";
-import {IIncredibleSquaringTaskManager} from "../src/IIncredibleSquaringTaskManager.sol";
+import {IncredibleLendingServiceManager, IServiceManager} from "../src/IncredibleLendingServiceManager.sol";
+import {IncredibleLendingTaskManager} from "../src/IncredibleLendingTaskManager.sol";
+import {IIncredibleLendingTaskManager} from "../src/IIncredibleLendingTaskManager.sol";
 import "../src/ERC20Mock.sol";
+import {OnchainDepthOracle} from "src/OnChainDepthOracle.sol";
+import {IncredibleLendingProtocol, ILoanCoordinator} from "src/IncredibleLendingProtocol.sol";
 
 import {Utils} from "./utils/Utils.sol";
 
@@ -30,8 +33,8 @@ import "forge-std/StdJson.sol";
 import "forge-std/console.sol";
 
 // # To deploy and verify our contract
-// forge script script/CredibleSquaringDeployer.s.sol:CredibleSquaringDeployer --rpc-url $RPC_URL  --private-key $PRIVATE_KEY --broadcast -vvvv
-contract CredibleSquaringDeployer is Script, Utils {
+// forge script script/CredibleLendingDeployer.s.sol:CredibleLendingDeployer --rpc-url $RPC_URL  --private-key $PRIVATE_KEY --broadcast -vvvv
+contract CredibleLendingDeployer is Script, Utils {
     // DEPLOYMENT CONSTANTS
     uint256 public constant QUORUM_THRESHOLD_PERCENTAGE = 100;
     uint32 public constant TASK_RESPONSE_WINDOW_BLOCK = 30;
@@ -45,9 +48,9 @@ contract CredibleSquaringDeployer is Script, Utils {
     ERC20Mock public erc20Mock;
     StrategyBaseTVLLimits public erc20MockStrategy;
 
-    // Credible Squaring contracts
-    ProxyAdmin public credibleSquaringProxyAdmin;
-    PauserRegistry public credibleSquaringPauserReg;
+    // Credible Lending contracts
+    ProxyAdmin public credibleLendingProxyAdmin;
+    PauserRegistry public credibleLendingPauserReg;
 
     blsregcoord.BLSRegistryCoordinatorWithIndices public registryCoordinator;
     blsregcoord.IBLSRegistryCoordinatorWithIndices public registryCoordinatorImplementation;
@@ -61,13 +64,32 @@ contract CredibleSquaringDeployer is Script, Utils {
     IStakeRegistry public stakeRegistry;
     IStakeRegistry public stakeRegistryImplementation;
 
-    IncredibleSquaringServiceManager public credibleSquaringServiceManager;
-    IServiceManager public credibleSquaringServiceManagerImplementation;
+    IncredibleLendingServiceManager public credibleLendingServiceManager;
+    IServiceManager public credibleLendingServiceManagerImplementation;
 
-    IncredibleSquaringTaskManager public credibleSquaringTaskManager;
-    IIncredibleSquaringTaskManager public credibleSquaringTaskManagerImplementation;
+    IncredibleLendingTaskManager public credibleLendingTaskManager;
+    IIncredibleLendingTaskManager public credibleLendingTaskManagerImplementation;
+
+    //
+    OnchainDepthOracle public onchainDepthOracle;
+    IncredibleLendingProtocol public incredibleLendingProtocol;
+    ILoanCoordinator public loanCoordinator;
+    ERC20Mock public mockCollateral;
+    ERC20Mock public mockWETH;
 
     function run() external {
+        // Lending contracts
+        mockCollateral = new ERC20Mock();
+        mockWETH = new ERC20Mock();
+        loanCoordinator = new LoanCoordinator();
+        onchainDepthOracle = new OnchainDepthOracle(IERC20(address(mockWETH)));
+        incredibleLendingProtocol = new IncredibleLendingProtocol(
+            new string[](0),
+            IERC20(address(mockWETH)),
+            IERC20(address(mockCollateral)),
+            loanCoordinator,
+            TASK_GENERATOR_ADDR);
+
         // Eigenlayer contracts
         string memory eigenlayerDeployedContracts = readOutput("eigenlayer_deployment_output");
         string memory sharedAvsDeployedContracts = readOutput("shared_avs_contracts_deployment_output");
@@ -86,22 +108,26 @@ contract CredibleSquaringDeployer is Script, Utils {
             stdJson.readAddress(eigenlayerDeployedContracts, ".addresses.baseStrategyImplementation")
         );
 
-        address credibleSquaringCommunityMultisig = msg.sender;
-        address credibleSquaringPauser = msg.sender;
+        address credibleLendingCommunityMultisig = msg.sender;
+        address credibleLendingPauser = msg.sender;
 
         vm.startBroadcast();
         _deployErc20AndStrategyAndWhitelistStrategy(
             eigenLayerProxyAdmin, eigenLayerPauserReg, baseStrategyImplementation, strategyManager
         );
-        _deployCredibleSquaringContracts(
+        _deployCredibleLendingContracts(
             strategyManager,
             delegationManager,
             slasher,
             erc20MockStrategy,
             pubkeyCompendium,
-            credibleSquaringCommunityMultisig,
-            credibleSquaringPauser
+            credibleLendingCommunityMultisig,
+            credibleLendingPauser
         );
+
+        // set tm
+        incredibleLendingProtocol.setTaskManager(credibleLendingTaskManager);
+
         vm.stopBroadcast();
     }
 
@@ -134,14 +160,14 @@ contract CredibleSquaringDeployer is Script, Utils {
         strategyManager.addStrategiesToDepositWhitelist(strats);
     }
 
-    function _deployCredibleSquaringContracts(
+    function _deployCredibleLendingContracts(
         IStrategyManager strategyManager,
         IDelegationManager delegationManager,
         ISlasher slasher,
         IStrategy strat,
         BLSPublicKeyCompendium pubkeyCompendium,
-        address credibleSquaringCommunityMultisig,
-        address credibleSquaringPauser
+        address credibleLendingCommunityMultisig,
+        address credibleLendingPauser
     ) internal {
         // Adding this as a temporary fix to make the rest of the script work with a single strategy
         // since it was originally written to work with an array of strategies
@@ -149,16 +175,16 @@ contract CredibleSquaringDeployer is Script, Utils {
         uint256 numStrategies = deployedStrategyArray.length;
 
         // deploy proxy admin for ability to upgrade proxy contracts
-        credibleSquaringProxyAdmin = new ProxyAdmin();
+        credibleLendingProxyAdmin = new ProxyAdmin();
 
         // deploy pauser registry
         {
             address[] memory pausers = new address[](2);
-            pausers[0] = credibleSquaringPauser;
-            pausers[1] = credibleSquaringCommunityMultisig;
-            credibleSquaringPauserReg = new PauserRegistry(
+            pausers[0] = credibleLendingPauser;
+            pausers[1] = credibleLendingCommunityMultisig;
+            credibleLendingPauserReg = new PauserRegistry(
                 pausers,
-                credibleSquaringCommunityMultisig
+                credibleLendingCommunityMultisig
             );
         }
 
@@ -170,20 +196,20 @@ contract CredibleSquaringDeployer is Script, Utils {
          * First, deploy upgradeable proxy contracts that **will point** to the implementations. Since the implementation contracts are
          * not yet deployed, we give these proxies an empty contract as the initial implementation, to act as if they have no code.
          */
-        credibleSquaringServiceManager = IncredibleSquaringServiceManager(
+        credibleLendingServiceManager = IncredibleLendingServiceManager(
             address(
                 new TransparentUpgradeableProxy(
                     address(emptyContract),
-                    address(credibleSquaringProxyAdmin),
+                    address(credibleLendingProxyAdmin),
                     ""
                 )
             )
         );
-        credibleSquaringTaskManager = IncredibleSquaringTaskManager(
+        credibleLendingTaskManager = IncredibleLendingTaskManager(
             address(
                 new TransparentUpgradeableProxy(
                     address(emptyContract),
-                    address(credibleSquaringProxyAdmin),
+                    address(credibleLendingProxyAdmin),
                     ""
                 )
             )
@@ -192,7 +218,7 @@ contract CredibleSquaringDeployer is Script, Utils {
             address(
                 new TransparentUpgradeableProxy(
                     address(emptyContract),
-                    address(credibleSquaringProxyAdmin),
+                    address(credibleLendingProxyAdmin),
                     ""
                 )
             )
@@ -201,7 +227,7 @@ contract CredibleSquaringDeployer is Script, Utils {
             address(
                 new TransparentUpgradeableProxy(
                     address(emptyContract),
-                    address(credibleSquaringProxyAdmin),
+                    address(credibleLendingProxyAdmin),
                     ""
                 )
             )
@@ -210,7 +236,7 @@ contract CredibleSquaringDeployer is Script, Utils {
             address(
                 new TransparentUpgradeableProxy(
                     address(emptyContract),
-                    address(credibleSquaringProxyAdmin),
+                    address(credibleLendingProxyAdmin),
                     ""
                 )
             )
@@ -219,7 +245,7 @@ contract CredibleSquaringDeployer is Script, Utils {
             address(
                 new TransparentUpgradeableProxy(
                     address(emptyContract),
-                    address(credibleSquaringProxyAdmin),
+                    address(credibleLendingProxyAdmin),
                     ""
                 )
             )
@@ -230,7 +256,7 @@ contract CredibleSquaringDeployer is Script, Utils {
             stakeRegistryImplementation = new StakeRegistry(
                 registryCoordinator,
                 strategyManager,
-                credibleSquaringServiceManager
+                credibleLendingServiceManager
             );
 
             // set up a quorum with each strategy that needs to be set up
@@ -251,7 +277,7 @@ contract CredibleSquaringDeployer is Script, Utils {
                 });
             }
 
-            credibleSquaringProxyAdmin.upgradeAndCall(
+            credibleLendingProxyAdmin.upgradeAndCall(
                 TransparentUpgradeableProxy(payable(address(stakeRegistry))),
                 address(stakeRegistryImplementation),
                 abi.encodeWithSelector(
@@ -262,7 +288,7 @@ contract CredibleSquaringDeployer is Script, Utils {
 
         registryCoordinatorImplementation = new blsregcoord.BLSRegistryCoordinatorWithIndices(
             slasher,
-            credibleSquaringServiceManager,
+            credibleLendingServiceManager,
             blsregcoord.IStakeRegistry(address(stakeRegistry)),
             blsregcoord.IBLSPubkeyRegistry(address(blsPubkeyRegistry)),
             blsregcoord.IIndexRegistry(address(indexRegistry))
@@ -281,16 +307,16 @@ contract CredibleSquaringDeployer is Script, Utils {
                     kickBIPsOfTotalStake: 100
                 });
             }
-            credibleSquaringProxyAdmin.upgradeAndCall(
+            credibleLendingProxyAdmin.upgradeAndCall(
                 TransparentUpgradeableProxy(payable(address(registryCoordinator))),
                 address(registryCoordinatorImplementation),
                 abi.encodeWithSelector(
                     blsregcoord.BLSRegistryCoordinatorWithIndices.initialize.selector,
                     // we set churnApprover and ejector to communityMultisig because we don't need them
-                    credibleSquaringCommunityMultisig,
-                    credibleSquaringCommunityMultisig,
+                    credibleLendingCommunityMultisig,
+                    credibleLendingCommunityMultisig,
                     operatorSetParams,
-                    credibleSquaringPauserReg,
+                    credibleLendingPauserReg,
                     // 0 initialPausedStatus means everything unpaused
                     0
                 )
@@ -302,45 +328,47 @@ contract CredibleSquaringDeployer is Script, Utils {
             pubkeyCompendium
         );
 
-        credibleSquaringProxyAdmin.upgrade(
+        credibleLendingProxyAdmin.upgrade(
             TransparentUpgradeableProxy(payable(address(blsPubkeyRegistry))), address(blsPubkeyRegistryImplementation)
         );
 
         indexRegistryImplementation = new IndexRegistry(registryCoordinator);
 
-        credibleSquaringProxyAdmin.upgrade(
+        credibleLendingProxyAdmin.upgrade(
             TransparentUpgradeableProxy(payable(address(indexRegistry))), address(indexRegistryImplementation)
         );
 
-        credibleSquaringServiceManagerImplementation = new IncredibleSquaringServiceManager(
+        credibleLendingServiceManagerImplementation = new IncredibleLendingServiceManager(
             registryCoordinator,
             slasher,
-            credibleSquaringTaskManager
+            credibleLendingTaskManager
         );
         // Third, upgrade the proxy contracts to use the correct implementation contracts and initialize them.
-        credibleSquaringProxyAdmin.upgradeAndCall(
-            TransparentUpgradeableProxy(payable(address(credibleSquaringServiceManager))),
-            address(credibleSquaringServiceManagerImplementation),
+        credibleLendingProxyAdmin.upgradeAndCall(
+            TransparentUpgradeableProxy(payable(address(credibleLendingServiceManager))),
+            address(credibleLendingServiceManagerImplementation),
             abi.encodeWithSelector(
-                credibleSquaringServiceManager.initialize.selector,
-                credibleSquaringPauserReg,
-                credibleSquaringCommunityMultisig
+                credibleLendingServiceManager.initialize.selector,
+                credibleLendingPauserReg,
+                credibleLendingCommunityMultisig
             )
         );
 
-        credibleSquaringTaskManagerImplementation = new IncredibleSquaringTaskManager(
+        credibleLendingTaskManagerImplementation = new IncredibleLendingTaskManager(
             registryCoordinator,
             TASK_RESPONSE_WINDOW_BLOCK
         );
 
         // Third, upgrade the proxy contracts to use the correct implementation contracts and initialize them.
-        credibleSquaringProxyAdmin.upgradeAndCall(
-            TransparentUpgradeableProxy(payable(address(credibleSquaringTaskManager))),
-            address(credibleSquaringTaskManagerImplementation),
+        credibleLendingProxyAdmin.upgradeAndCall(
+            TransparentUpgradeableProxy(payable(address(credibleLendingTaskManager))),
+            address(credibleLendingTaskManagerImplementation),
             abi.encodeWithSelector(
-                credibleSquaringTaskManager.initialize.selector,
-                credibleSquaringPauserReg,
-                credibleSquaringCommunityMultisig,
+                credibleLendingTaskManager.initialize.selector,
+                credibleLendingPauserReg,
+                incredibleLendingProtocol,
+                onchainDepthOracle,
+                credibleLendingCommunityMultisig,
                 AGGREGATOR_ADDR,
                 TASK_GENERATOR_ADDR,
                 QUORUM_THRESHOLD_PERCENTAGE
@@ -353,19 +381,17 @@ contract CredibleSquaringDeployer is Script, Utils {
         string memory deployed_addresses = "addresses";
         vm.serializeAddress(deployed_addresses, "erc20Mock", address(erc20Mock));
         vm.serializeAddress(deployed_addresses, "erc20MockStrategy", address(erc20MockStrategy));
-        vm.serializeAddress(
-            deployed_addresses, "credibleSquaringServiceManager", address(credibleSquaringServiceManager)
-        );
+        vm.serializeAddress(deployed_addresses, "credibleLendingServiceManager", address(credibleLendingServiceManager));
         vm.serializeAddress(
             deployed_addresses,
-            "credibleSquaringServiceManagerImplementation",
-            address(credibleSquaringServiceManagerImplementation)
+            "credibleLendingServiceManagerImplementation",
+            address(credibleLendingServiceManagerImplementation)
         );
-        vm.serializeAddress(deployed_addresses, "credibleSquaringTaskManager", address(credibleSquaringTaskManager));
+        vm.serializeAddress(deployed_addresses, "credibleLendingTaskManager", address(credibleLendingTaskManager));
         vm.serializeAddress(
             deployed_addresses,
-            "credibleSquaringTaskManagerImplementation",
-            address(credibleSquaringTaskManagerImplementation)
+            "credibleLendingTaskManagerImplementation",
+            address(credibleLendingTaskManagerImplementation)
         );
         vm.serializeAddress(deployed_addresses, "registryCoordinator", address(registryCoordinator));
         string memory deployed_addresses_output = vm.serializeAddress(
@@ -375,6 +401,6 @@ contract CredibleSquaringDeployer is Script, Utils {
         // serialize all the data
         string memory finalJson = vm.serializeString(parent_object, deployed_addresses, deployed_addresses_output);
 
-        writeOutput(finalJson, "credible_squaring_avs_deployment_output");
+        writeOutput(finalJson, "credible_lending_avs_deployment_output");
     }
 }

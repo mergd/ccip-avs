@@ -12,15 +12,17 @@ import {
 } from "@eigenlayer-middleware/src/BLSSignatureChecker.sol";
 import {BLSOperatorStateRetriever} from "@eigenlayer-middleware/src/BLSOperatorStateRetriever.sol";
 import "@eigenlayer/contracts/libraries/BN254.sol";
-import "./IIncredibleSquaringTaskManager.sol";
+import "./IncredibleLendingProtocol.sol";
+import "./IIncredibleLendingTaskManager.sol";
+import {OnchainDepthOracle} from "./OnchainDepthOracle.sol";
 
-contract IncredibleSquaringTaskManager is
+contract IncredibleLendingTaskManager is
     Initializable,
     OwnableUpgradeable,
     Pausable,
     BLSSignatureChecker,
     BLSOperatorStateRetriever,
-    IIncredibleSquaringTaskManager
+    IIncredibleLendingTaskManager
 {
     using BN254 for BN254.G1Point;
 
@@ -47,6 +49,8 @@ contract IncredibleSquaringTaskManager is
 
     address public aggregator;
     address public generator;
+    IncredibleLendingProtocol public lendingprotocol;
+    OnchainDepthOracle public onchainDepthOracle;
 
     /* MODIFIERS */
     modifier onlyAggregator() {
@@ -67,25 +71,35 @@ contract IncredibleSquaringTaskManager is
         TASK_RESPONSE_WINDOW_BLOCK = _taskResponseWindowBlock;
     }
 
-    function initialize(IPauserRegistry _pauserRegistry, address initialOwner, address _aggregator, address _generator)
-        public
-        initializer
-    {
+    function initialize(
+        IPauserRegistry _pauserRegistry,
+        IncredibleLendingProtocol _lendingProtocol,
+        OnchainDepthOracle _onchainDepthOracle,
+        address initialOwner,
+        address _aggregator,
+        address _generator
+    ) public initializer {
         _initializePauser(_pauserRegistry, UNPAUSE_ALL);
         _transferOwnership(initialOwner);
+        lendingprotocol = _lendingProtocol;
         aggregator = _aggregator;
         generator = _generator;
+        onchainDepthOracle = _onchainDepthOracle;
     }
 
     /* FUNCTIONS */
     // NOTE: this function creates new task, assigns it a taskId
-    function createNewTask(uint256 numberToBeSquared, uint32 quorumThresholdPercentage, bytes calldata quorumNumbers)
-        external
-        onlyTaskGenerator
-    {
+    function createNewTask(
+        uint256 debtAmt,
+        uint256 collateralAmt,
+        address collateralToken,
+        uint32 quorumThresholdPercentage,
+        bytes calldata quorumNumbers
+    ) external onlyTaskGenerator {
         // create a new task struct
         Task memory newTask;
-        newTask.numberToBeSquared = numberToBeSquared;
+
+        newTask.taskData = abi.encode(debtAmt, collateralAmt, collateralToken);
         newTask.taskCreatedBlock = uint32(block.number);
         newTask.quorumThresholdPercentage = quorumThresholdPercentage;
         newTask.quorumNumbers = quorumNumbers;
@@ -123,7 +137,7 @@ contract IncredibleSquaringTaskManager is
 
         /* CHECKING SIGNATURES & WHETHER THRESHOLD IS MET OR NOT */
         // calculate message which operators signed
-        bytes32 message = keccak256(abi.encode(taskResponse));
+        bytes32 message = keccak256(abi.encode(taskResponse.response));
 
         // check the BLS signature
         (QuorumStakeTotals memory quorumStakeTotals, bytes32 hashOfNonSigners) =
@@ -144,6 +158,13 @@ contract IncredibleSquaringTaskManager is
         // updating the storage with task responsea
         allTaskResponses[taskResponse.referenceTaskIndex] = keccak256(abi.encode(taskResponse, taskResponseMetadata));
 
+        // callback to the contract to pause
+        bool res = abi.decode(taskResponse, (bool));
+        if (!res) {
+            // Initial call was wrong, pause the contract
+            lendingprotocol.togglePause();
+        }
+
         // emitting event
         emit TaskResponded(taskResponse, taskResponseMetadata);
     }
@@ -162,7 +183,6 @@ contract IncredibleSquaringTaskManager is
         BN254.G1Point[] memory pubkeysOfNonSigningOperators
     ) external {
         uint32 referenceTaskIndex = taskResponse.referenceTaskIndex;
-        uint256 numberToBeSquared = task.numberToBeSquared;
         // some logical checks
         require(allTaskResponses[referenceTaskIndex] != bytes32(0), "Task hasn't been responded to yet");
         require(
@@ -179,9 +199,10 @@ contract IncredibleSquaringTaskManager is
             "The challenge period for this task has already expired."
         );
 
+        (uint256 debtAmt, uint256 collateralAmt, address token) = abi.decode(task, (uint256, uint256, address));
+
         // logic for checking whether challenge is valid or not
-        uint256 actualSquaredOutput = numberToBeSquared * numberToBeSquared;
-        bool isResponseCorrect = (actualSquaredOutput == taskResponse.numberSquared);
+        bool isResponseCorrect = onchainDepthOracle.testDepth(debtAmt, collateralAmt, token);
 
         // if response was correct, no slashing happens so we return
         if (isResponseCorrect == true) {
@@ -277,6 +298,9 @@ contract IncredibleSquaringTaskManager is
 
         // the task response has been challenged successfully
         taskSuccesfullyChallenged[referenceTaskIndex] = true;
+
+        // Unpause the contract
+        lendingprotocol.togglePause();
 
         emit TaskChallengedSuccessfully(referenceTaskIndex, msg.sender);
     }

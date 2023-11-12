@@ -16,6 +16,6 @@
 [submodule "contracts/lib/landingprotocol"]
 	path = contracts/lib/landingprotocol
 	url = https://github.com/mergd/landingprotocol
-[submodule "contracts/lib/ccip-read"]
-	path = contracts/lib/ccip-read
-	url = https://github.com/mergd/ccip-read
+[submodule "contracts/lib/solady"]
+	path = contracts/lib/solady
+	url = https://github.com/vectorized/solady

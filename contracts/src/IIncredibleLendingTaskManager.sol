@@ -3,7 +3,7 @@ pragma solidity ^0.8.9;
 
 import "@eigenlayer/contracts/libraries/BN254.sol";
 
-interface IIncrediblePrecompile {
+interface IIncredibleLendingTaskManager {
     // EVENTS
     event NewTaskCreated(uint32 indexed taskIndex, Task task);
 
@@ -48,8 +48,13 @@ interface IIncrediblePrecompile {
 
     // FUNCTIONS
     // NOTE: this function creates new task.
-    function createNewTask(uint256 numberToBeSquared, uint32 quorumThresholdPercentage, bytes calldata quorumNumbers)
-        external;
+    function createNewTask(
+        uint256 debtAmt,
+        uint256 collateralAmt,
+        address collateralToken,
+        uint32 quorumThresholdPercentage,
+        bytes calldata quorumNumbers
+    ) external;
 
     /// @notice Returns the current 'taskNumber' for the middleware
     function taskNumber() external view returns (uint32);
