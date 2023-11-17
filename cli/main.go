@@ -4,8 +4,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/Layr-Labs/incredible-squaring-avs/cli/actions"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/config"
+	"github.com/mergd/ccip-avs/cli/actions"
+	"github.com/mergd/ccip-avs/core/config"
 	"github.com/urfave/cli"
 )
 
@@ -61,7 +61,7 @@ func main() {
 		{
 			Name:    "print-operator-status",
 			Aliases: []string{"s"},
-			Usage:   "prints operator status as viewed from incredible squaring contracts",
+			Usage:   "prints operator status as viewed from incredible Lending contracts",
 			Action:  actions.PrintOperatorStatus,
 		},
 	}

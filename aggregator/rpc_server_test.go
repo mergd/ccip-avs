@@ -11,9 +11,9 @@ import (
 
 	"github.com/Layr-Labs/eigensdk-go/crypto/bls"
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
-	"github.com/Layr-Labs/incredible-squaring-avs/aggregator/types"
-	cstaskmanager "github.com/Layr-Labs/incredible-squaring-avs/contracts/bindings/IncredibleSquaringTaskManager"
-	"github.com/Layr-Labs/incredible-squaring-avs/core"
+	"github.com/mergd/ccip-avs/aggregator/types"
+	cstaskmanager "github.com/mergd/ccip-avs/contracts/bindings/IncredibleLendingTaskManager"
+	"github.com/mergd/ccip-avs/core"
 )
 
 func TestProcessSignedTaskResponse(t *testing.T) {
@@ -63,7 +63,7 @@ func TestProcessSignedTaskResponse(t *testing.T) {
 // mocks an operator signing on a task response
 func createMockSignedTaskResponse(mockTask MockTask, keypair bls.KeyPair) (*SignedTaskResponse, error) {
 	numberToSquareBigInt := big.NewInt(int64(mockTask.NumberToSquare))
-	taskResponse := &cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse{
+	taskResponse := &cstaskmanager.IIncredibleLendingTaskManagerTaskResponse{
 		ReferenceTaskIndex: mockTask.TaskNum,
 		NumberSquared:      numberToSquareBigInt.Mul(numberToSquareBigInt, numberToSquareBigInt),
 	}

@@ -1,4 +1,4 @@
-module github.com/Layr-Labs/incredible-squaring-avs
+module github.com/mergd/ccip-avs
 
 go 1.21
 

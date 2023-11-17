@@ -295,7 +295,7 @@
             "uid": "prometheus"
           },
           "editorMode": "builder",
-          "expr": "eigen_performance_score{avs_name=\"incredible-squaring\"}",
+          "expr": "eigen_performance_score{avs_name=\"incredible-Lending\"}",
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
@@ -319,7 +319,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Incredible Squaring",
+  "title": "Incredible Lending",
   "uid": "vgD8u1U4z",
   "version": 2,
   "weekStart": ""

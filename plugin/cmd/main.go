@@ -17,10 +17,10 @@ import (
 	"github.com/Layr-Labs/eigensdk-go/metrics"
 	"github.com/Layr-Labs/eigensdk-go/signer"
 	"github.com/Layr-Labs/eigensdk-go/utils"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/chainio"
-	"github.com/Layr-Labs/incredible-squaring-avs/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/mergd/ccip-avs/core/chainio"
+	"github.com/mergd/ccip-avs/types"
 	"github.com/urfave/cli"
 )
 
@@ -67,8 +67,8 @@ func main() {
 		OperationFlag,
 		StrategyAddrFlag,
 	}
-	app.Name = "credible-squaring-plugin"
-	app.Usage = "Credible Squaring Plugin"
+	app.Name = "credible-Lending-plugin"
+	app.Usage = "Credible Lending Plugin"
 	app.Description = "This is used to run one time operations like avs opt-in/opt-out"
 	app.Action = plugin
 	err := app.Run(os.Args)

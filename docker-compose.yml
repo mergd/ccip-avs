@@ -1,8 +1,8 @@
 version: "3"
 
 networks:
-  incredible-squaring-network:
-    name: incredible-squaring-network
+  incredible-Lending-network:
+    name: incredible-Lending-network
     driver: bridge
 
 services:
@@ -18,24 +18,24 @@ services:
       - ./tests/integration/avs-and-eigenlayer-deployed-anvil-state.json:/root/.anvil/state.json
     command: --host 0.0.0.0 --load-state /root/.anvil/state.json
     networks:
-      - incredible-squaring-network
+      - incredible-Lending-network
 
   aggregator:
-    image: ghcr.io/layr-labs/incredible-squaring/aggregator/cmd/main.go:latest
-    container_name: incredible-squaring-aggregator
+    image: ghcr.io/layr-labs/incredible-Lending/aggregator/cmd/main.go:latest
+    container_name: incredible-Lending-aggregator
     depends_on:
       anvil:
         condition: service_started
     volumes:
-      - ./:/incredible-squaring/
-    working_dir: /incredible-squaring
-    command: --config config-files/aggregator-docker-compose.yaml --credible-squaring-deployment contracts/script/output/31337/credible_squaring_avs_deployment_output.json --ecdsa-private-key 0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6 --bls-private-key 100
+      - ./:/incredible-Lending/
+    working_dir: /incredible-Lending
+    command: --config config-files/aggregator-docker-compose.yaml --credible-Lending-deployment contracts/script/output/31337/credible_Lending_avs_deployment_output.json --ecdsa-private-key 0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6 --bls-private-key 100
     networks:
-      - incredible-squaring-network
+      - incredible-Lending-network
 
   operator1:
-    image: ghcr.io/layr-labs/incredible-squaring/operator/cmd/main.go:latest
-    container_name: incredible-squaring-operator1
+    image: ghcr.io/layr-labs/incredible-Lending/operator/cmd/main.go:latest
+    container_name: incredible-Lending-operator1
     depends_on:
       anvil:
         condition: service_started
@@ -44,24 +44,24 @@ services:
     ports:
       - "9090:9090" # prometheus metrics port (defined in operator-docker-compose.anvil.yaml file)
     volumes:
-      - ./:/incredible-squaring/
-    working_dir: /incredible-squaring
+      - ./:/incredible-Lending/
+    working_dir: /incredible-Lending
     command: --config config-files/operator-docker-compose.anvil.yaml
     networks:
-      - incredible-squaring-network
+      - incredible-Lending-network
 
   # operator2:
-  #   image: ghcr.io/layr-labs/incredible-squaring/operator/cmd/main.go:latest
-  #   container_name: incredible-squaring-operator2
+  #   image: ghcr.io/layr-labs/incredible-Lending/operator/cmd/main.go:latest
+  #   container_name: incredible-Lending-operator2
   #   depends_on:
   #     anvil:
   #       condition: service_started
   #   volumes:
-  #     - ./:/incredible-squaring/
-  #   working_dir: /incredible-squaring
-  #   command: --config config-files/operator-docker-compose.anvil.yaml --credible-squaring-deployment contracts/script/output/31337/credible_squaring_avs_deployment_output.json --ecdsa-private-key 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d --bls-private-key 2
+  #     - ./:/incredible-Lending/
+  #   working_dir: /incredible-Lending
+  #   command: --config config-files/operator-docker-compose.anvil.yaml --credible-Lending-deployment contracts/script/output/31337/credible_Lending_avs_deployment_output.json --ecdsa-private-key 0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d --bls-private-key 2
   #   networks:
-  #     - incredible-squaring-network
+  #     - incredible-Lending-network
 
   # METRICS RELATED
   grafana:
@@ -81,7 +81,7 @@ services:
     ports:
       - 3000:3000
     networks:
-      - incredible-squaring-network
+      - incredible-Lending-network
 
   prometheus:
     image: prom/prometheus:v2.42.0
@@ -101,7 +101,7 @@ services:
     expose:
       - 9090
     networks:
-      - incredible-squaring-network
+      - incredible-Lending-network
     # so that we can access the host from within the container
     # needed to get the metrics from host.docker.internal:9184/metrics
     extra_hosts:

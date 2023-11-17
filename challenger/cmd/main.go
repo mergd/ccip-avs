@@ -9,8 +9,8 @@ import (
 
 	"github.com/urfave/cli"
 
-	"github.com/Layr-Labs/incredible-squaring-avs/challenger"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/config"
+	"github.com/mergd/ccip-avs/challenger"
+	"github.com/mergd/ccip-avs/core/config"
 )
 
 var (
@@ -25,8 +25,8 @@ func main() {
 	app := cli.NewApp()
 	app.Flags = config.Flags
 	app.Version = fmt.Sprintf("%s-%s-%s", Version, GitCommit, GitDate)
-	app.Name = "credible-squaring-challenger"
-	app.Usage = "Credible Squaring Challenger"
+	app.Name = "credible-Lending-challenger"
+	app.Usage = "Credible Lending Challenger"
 	app.Description = "Service that challenges wrong response to the task."
 
 	app.Action = challengerMain

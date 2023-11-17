@@ -54,7 +54,7 @@ func (o *Operator) registerOperatorOnStartup(blsPubkeyCompendiumAddr common.Addr
 }
 
 func (o *Operator) optOperatorIntoSlashing() error {
-	_, err := o.eigenlayerWriter.OptOperatorIntoSlashing(context.Background(), o.credibleSquaringServiceManagerAddr)
+	_, err := o.eigenlayerWriter.OptOperatorIntoSlashing(context.Background(), o.credibleLendingServiceManagerAddr)
 	if err != nil {
 		o.logger.Errorf("Error opting operator into slashing")
 		return err
@@ -120,7 +120,7 @@ func (o *Operator) RegisterBLSPublicKey() error {
 // Registration specific functions
 func (o *Operator) RegisterOperatorWithAvs() error {
 
-	// 1. opt operator into getting slashed by credible squaring service manager
+	// 1. opt operator into getting slashed by credible lending service manager
 	err := o.optOperatorIntoSlashing()
 	if err != nil {
 		return err
@@ -181,7 +181,7 @@ func (o *Operator) PrintOperatorStatus() error {
 	}
 	pubkeysRegistered := pubkeyhash != [32]byte{}
 	serviceManagerCanSlashOperatorUntilBlock, err := o.eigenlayerReader.ServiceManagerCanSlashOperatorUntilBlock(
-		context.Background(), o.operatorAddr, o.credibleSquaringServiceManagerAddr,
+		context.Background(), o.operatorAddr, o.credibleLendingServiceManagerAddr,
 	)
 	if err != nil {
 		return err

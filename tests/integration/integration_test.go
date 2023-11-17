@@ -13,14 +13,14 @@ import (
 	sdklogging "github.com/Layr-Labs/eigensdk-go/logging"
 	"github.com/Layr-Labs/eigensdk-go/signer"
 	sdkutils "github.com/Layr-Labs/eigensdk-go/utils"
-	"github.com/Layr-Labs/incredible-squaring-avs/aggregator"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/chainio"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/config"
-	"github.com/Layr-Labs/incredible-squaring-avs/operator"
-	"github.com/Layr-Labs/incredible-squaring-avs/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/mergd/ccip-avs/aggregator"
+	"github.com/mergd/ccip-avs/core/chainio"
+	"github.com/mergd/ccip-avs/core/config"
+	"github.com/mergd/ccip-avs/operator"
+	"github.com/mergd/ccip-avs/types"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
@@ -48,9 +48,9 @@ func TestIntegration(t *testing.T) {
 	aggConfigRaw.EthRpcUrl = "http://" + anvilEndpoint
 	aggConfigRaw.EthWsUrl = "ws://" + anvilEndpoint
 
-	var credibleSquaringDeploymentRaw config.CredibleSquaringDeploymentRaw
-	credibleSquaringDeploymentFilePath := "../../contracts/script/output/31337/credible_squaring_avs_deployment_output.json"
-	sdkutils.ReadJsonConfig(credibleSquaringDeploymentFilePath, &credibleSquaringDeploymentRaw)
+	var credibleLendingDeploymentRaw config.CredibleLendingDeploymentRaw
+	credibleLendingDeploymentFilePath := "../../contracts/script/output/31337/credible_Lending_avs_deployment_output.json"
+	sdkutils.ReadJsonConfig(credibleLendingDeploymentFilePath, &credibleLendingDeploymentRaw)
 
 	var sharedAvsContractsDeploymentRaw config.SharedAvsContractsRaw
 	sharedAvsContractsDeploymentFilePath := "../../contracts/script/output/31337/shared_avs_contracts_deployment_output.json"
@@ -94,19 +94,19 @@ func TestIntegration(t *testing.T) {
 	}
 
 	config := &config.Config{
-		EcdsaPrivateKey:                      ecdsaPrivateKey,
-		Logger:                               logger,
-		EthRpcUrl:                            aggConfigRaw.EthRpcUrl,
-		EthHttpClient:                        ethRpcClient,
-		EthWsClient:                          ethWsClient,
-		BlsOperatorStateRetrieverAddr:        common.HexToAddress(sharedAvsContractsDeploymentRaw.BlsOperatorStateRetrieverAddr),
-		IncredibleSquaringServiceManagerAddr: common.HexToAddress(credibleSquaringDeploymentRaw.Addresses.IncredibleSquaringServiceManagerAddr),
-		SlasherAddr:                          common.HexToAddress(""),
-		AggregatorServerIpPortAddr:           aggConfigRaw.AggregatorServerIpPortAddr,
-		RegisterOperatorOnStartup:            aggConfigRaw.RegisterOperatorOnStartup,
-		Signer:                               privateKeySigner,
-		OperatorAddress:                      operatorAddr,
-		BlsPublicKeyCompendiumAddress:        common.HexToAddress(aggConfigRaw.BLSPubkeyCompendiumAddr),
+		EcdsaPrivateKey:                     ecdsaPrivateKey,
+		Logger:                              logger,
+		EthRpcUrl:                           aggConfigRaw.EthRpcUrl,
+		EthHttpClient:                       ethRpcClient,
+		EthWsClient:                         ethWsClient,
+		BlsOperatorStateRetrieverAddr:       common.HexToAddress(sharedAvsContractsDeploymentRaw.BlsOperatorStateRetrieverAddr),
+		IncredibleLendingServiceManagerAddr: common.HexToAddress(credibleLendingDeploymentRaw.Addresses.IncredibleLendingServiceManagerAddr),
+		SlasherAddr:                         common.HexToAddress(""),
+		AggregatorServerIpPortAddr:          aggConfigRaw.AggregatorServerIpPortAddr,
+		RegisterOperatorOnStartup:           aggConfigRaw.RegisterOperatorOnStartup,
+		Signer:                              privateKeySigner,
+		OperatorAddress:                     operatorAddr,
+		BlsPublicKeyCompendiumAddress:       common.HexToAddress(aggConfigRaw.BLSPubkeyCompendiumAddr),
 	}
 
 	/* Prepare the config file for operator */
