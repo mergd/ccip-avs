@@ -78,17 +78,7 @@ contract CredibleLendingDeployer is Script, Utils {
     ERC20 public mockWETH;
 
     function run() external {
-        // Lending contracts
-        mockCollateral = ERC20(address(new ERC20Mock()));
-        mockWETH = ERC20(address(new ERC20Mock()));
-        loanCoordinator = new LoanCoordinator();
-        onchainDepthOracle = new OnchainDepthOracle(mockWETH);
-        incredibleLendingProtocol = new IncredibleLendingProtocol(
-            new string[](0),
-            mockWETH,
-            mockCollateral,
-            loanCoordinator,
-            TASK_GENERATOR_ADDR);
+        uint256 deployer = vm.envUint("DEPLOYER_KEY");
 
         // Eigenlayer contracts
         string memory eigenlayerDeployedContracts = readOutput("eigenlayer_deployment_output");
@@ -111,7 +101,19 @@ contract CredibleLendingDeployer is Script, Utils {
         address credibleLendingCommunityMultisig = msg.sender;
         address credibleLendingPauser = msg.sender;
 
-        vm.startBroadcast();
+        vm.startBroadcast(deployer);
+        // Lending contracts
+        mockCollateral = ERC20(address(new ERC20Mock()));
+        mockWETH = ERC20(address(new ERC20Mock()));
+        loanCoordinator = new LoanCoordinator();
+        onchainDepthOracle = new OnchainDepthOracle(mockWETH);
+        incredibleLendingProtocol = new IncredibleLendingProtocol(
+            new string[](0),
+            mockWETH,
+            mockCollateral,
+            loanCoordinator,
+            TASK_GENERATOR_ADDR);
+
         _deployErc20AndStrategyAndWhitelistStrategy(
             eigenLayerProxyAdmin, eigenLayerPauserReg, baseStrategyImplementation, strategyManager
         );
