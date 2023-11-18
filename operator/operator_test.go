@@ -3,9 +3,12 @@ package operator
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"testing"
 	"time"
+
+	"math/big"
+
+	"encoding/binary"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
@@ -27,7 +30,6 @@ func TestOperator(t *testing.T) {
 	const taskIndex = 1
 
 	t.Run("ProcessNewTaskCreatedLog", func(t *testing.T) {
-		var numberToBeSquared = big.NewInt(3)
 		newTaskCreatedLog := &cstaskmanager.ContractIncredibleLendingTaskManagerNewTaskCreated{
 			TaskIndex: taskIndex,
 
@@ -39,23 +41,41 @@ func TestOperator(t *testing.T) {
 			// },
 			Raw: types.Log{},
 		}
+
+		var data []byte
+		// Set the first boolean value to true
+		data = append(data, 0) // Append a byte with all bits set to 0
+		data[0] |= 1 << 0      // Set the first bit to 1 (true)
+
 		got := operator.ProcessNewTaskCreatedLog(newTaskCreatedLog)
-		numberSquared := big.NewInt(0).Mul(numberToBeSquared, numberToBeSquared)
 		want := &cstaskmanager.IIncredibleLendingTaskManagerTaskResponse{
 			ReferenceTaskIndex: taskIndex,
-			NumberSquared:      numberSquared,
+			Response:           data,
 		}
 		assert.Equal(t, got, want)
 	})
 
 	t.Run("Start", func(t *testing.T) {
-		var numberToBeSquared = big.NewInt(3)
+		var data []byte
 
+		// Append uint256s
+		num1 := uint64(12345)
+		data = append(data, make([]byte, 32)...) // Append 32 zero bytes for uint256
+		binary.LittleEndian.PutUint64(data[len(data)-32:], num1)
+
+		num2 := uint64(67890)
+		data = append(data, make([]byte, 32)...) // Append 32 zero bytes for uint256
+		binary.LittleEndian.PutUint64(data[len(data)-32:], num2)
+
+		// Append collateral token address
+		address := "0x1234567890123456789012345678901234567890" // Replace with the actual address
+		addressBytes := []byte(address)
+		data = append(data, addressBytes...)
 		// new task event
 		newTaskCreatedEvent := &cstaskmanager.ContractIncredibleLendingTaskManagerNewTaskCreated{
 			TaskIndex: taskIndex,
 			Task: cstaskmanager.IIncredibleLendingTaskManagerTask{
-				NumberToBeSquared:         numberToBeSquared,
+				TaskData:                  data,
 				TaskCreatedBlock:          1000,
 				QuorumNumbers:             aggtypes.QUORUM_NUMBERS,
 				QuorumThresholdPercentage: aggtypes.QUORUM_THRESHOLD_NUMERATOR,

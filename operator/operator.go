@@ -10,12 +10,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/Layr-Labs/incredible-squaring-avs/aggregator"
-	"github.com/Layr-Labs/incredible-squaring-avs/core"
-	"github.com/Layr-Labs/incredible-squaring-avs/core/chainio"
-	"github.com/Layr-Labs/incredible-squaring-avs/metrics"
-	"github.com/Layr-Labs/incredible-squaring-avs/types"
+	"github.com/mergd/ccip-avs/aggregator"
 	cstaskmanager "github.com/mergd/ccip-avs/contracts/bindings/IncredibleLendingTaskManager"
+	depthoracle "github.com/mergd/ccip-avs/contracts/bindings/OnChainDepthOracle"
+	"github.com/mergd/ccip-avs/core"
+	"github.com/mergd/ccip-avs/core/chainio"
+	"github.com/mergd/ccip-avs/metrics"
+	"github.com/mergd/ccip-avs/types"
 
 	sdkavsregistry "github.com/Layr-Labs/eigensdk-go/chainio/avsregistry"
 	sdkclients "github.com/Layr-Labs/eigensdk-go/chainio/clients"
@@ -32,7 +33,7 @@ import (
 	sdktypes "github.com/Layr-Labs/eigensdk-go/types"
 )
 
-const AVS_NAME = "incredible-squaring"
+const AVS_NAME = "incredible-lending"
 const SEM_VER = "0.0.1"
 
 type Operator struct {
@@ -56,13 +57,13 @@ type Operator struct {
 	operatorId       bls.OperatorId
 	operatorAddr     common.Address
 	// receive new tasks in this chan (typically from listening to onchain event)
-	newTaskCreatedChan chan *cstaskmanager.ContractIncredibleSquaringTaskManagerNewTaskCreated
+	newTaskCreatedChan chan *cstaskmanager.ContractIncredibleLendingTaskManagerNewTaskCreated
 	// ip address of aggregator
 	aggregatorServerIpPortAddr string
 	// rpc client to send signed task responses to aggregator
 	aggregatorRpcClient AggregatorRpcClienter
 	// needed when opting in to avs (allow this service manager contract to slash operator)
-	credibleSquaringServiceManagerAddr common.Address
+	credibleLendingServiceManagerAddr common.Address
 }
 
 func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
@@ -228,24 +229,24 @@ func NewOperatorFromConfig(c types.NodeConfig) (*Operator, error) {
 	}
 
 	operator := &Operator{
-		config:                             c,
-		logger:                             logger,
-		metricsReg:                         reg,
-		metrics:                            avsAndEigenMetrics,
-		nodeApi:                            nodeApi,
-		ethClient:                          ethRpcClient,
-		avsWriter:                          avsWriter,
-		avsReader:                          avsReader,
-		avsSubscriber:                      avsSubscriber,
-		eigenlayerReader:                   eigenlayerReader,
-		eigenlayerWriter:                   eigenlayerWriter,
-		blsKeypair:                         blsKeyPair,
-		operatorAddr:                       common.HexToAddress(c.OperatorAddress),
-		aggregatorServerIpPortAddr:         c.AggregatorServerIpPortAddress,
-		aggregatorRpcClient:                aggregatorRpcClient,
-		newTaskCreatedChan:                 make(chan *cstaskmanager.ContractIncredibleSquaringTaskManagerNewTaskCreated),
-		credibleSquaringServiceManagerAddr: common.HexToAddress(c.AVSServiceManagerAddress),
-		operatorId:                         [32]byte{0}, // this is set below
+		config:                            c,
+		logger:                            logger,
+		metricsReg:                        reg,
+		metrics:                           avsAndEigenMetrics,
+		nodeApi:                           nodeApi,
+		ethClient:                         ethRpcClient,
+		avsWriter:                         avsWriter,
+		avsReader:                         avsReader,
+		avsSubscriber:                     avsSubscriber,
+		eigenlayerReader:                  eigenlayerReader,
+		eigenlayerWriter:                  eigenlayerWriter,
+		blsKeypair:                        blsKeyPair,
+		operatorAddr:                      common.HexToAddress(c.OperatorAddress),
+		aggregatorServerIpPortAddr:        c.AggregatorServerIpPortAddress,
+		aggregatorRpcClient:               aggregatorRpcClient,
+		newTaskCreatedChan:                make(chan *cstaskmanager.ContractIncredibleLendingTaskManagerNewTaskCreated),
+		credibleLendingServiceManagerAddr: common.HexToAddress(c.AVSServiceManagerAddress),
+		operatorId:                        [32]byte{0}, // this is set below
 
 	}
 
@@ -325,24 +326,48 @@ func (o *Operator) Start(ctx context.Context) error {
 
 // Takes a NewTaskCreatedLog struct as input and returns a TaskResponseHeader struct.
 // The TaskResponseHeader struct is the struct that is signed and sent to the contract as a task response.
-func (o *Operator) ProcessNewTaskCreatedLog(newTaskCreatedLog *cstaskmanager.ContractIncredibleSquaringTaskManagerNewTaskCreated) *cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse {
+func (o *Operator) ProcessNewTaskCreatedLog(newTaskCreatedLog *cstaskmanager.ContractIncredibleLendingTaskManagerNewTaskCreated) *cstaskmanager.IIncredibleLendingTaskManagerTaskResponse {
 	o.logger.Debug("Received new task", "task", newTaskCreatedLog)
 	o.logger.Info("Received new task",
-		"numberToBeSquared", newTaskCreatedLog.Task.NumberToBeSquared,
+		"rawTaskData", newTaskCreatedLog.Task.TaskData,
 		"taskIndex", newTaskCreatedLog.TaskIndex,
 		"taskCreatedBlock", newTaskCreatedLog.Task.TaskCreatedBlock,
 		"quorumNumbers", newTaskCreatedLog.Task.QuorumNumbers,
 		"QuorumThresholdPercentage", newTaskCreatedLog.Task.QuorumThresholdPercentage,
 	)
-	numberSquared := big.NewInt(0).Exp(newTaskCreatedLog.Task.NumberToBeSquared, big.NewInt(2), nil)
-	taskResponse := &cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse{
+	var data []byte
+
+	str1 := newTaskCreatedLog.Task.TaskData[0:32]
+	collAmt := new(big.Int)
+	collAmt.SetString(string(str1), 0)
+	str2 := newTaskCreatedLog.Task.TaskData[32:64]
+	debtAmt := new(big.Int)
+	debtAmt.SetString(string(str2), 0)
+	address := newTaskCreatedLog.Task.TaskData[64:96]
+	collAddr := common.BytesToAddress(address[len(address)-20:])
+
+	contractAddress := common.HexToAddress("0xYourContractAddress")
+
+	// Create a new instance of the contract
+	instance, _ := depthoracle.ContractOnChainDepthOracleCaller(contractAddress)
+
+	// Now you can call the contract's methods
+	result, _ := instance.testDepth(collAmt, debtAmt, collAddr)
+
+	// Set the first boolean value to true
+	data = append(data, 0) // Append a byte with all bits set to 0
+
+	if result {
+		data[0] |= 1 << 0 // Set the first bit to 1 (true)
+	}
+	taskResponse := &cstaskmanager.IIncredibleLendingTaskManagerTaskResponse{
 		ReferenceTaskIndex: newTaskCreatedLog.TaskIndex,
-		NumberSquared:      numberSquared,
+		Response:           data,
 	}
 	return taskResponse
 }
 
-func (o *Operator) SignTaskResponse(taskResponse *cstaskmanager.IIncredibleSquaringTaskManagerTaskResponse) (*aggregator.SignedTaskResponse, error) {
+func (o *Operator) SignTaskResponse(taskResponse *cstaskmanager.IIncredibleLendingTaskManagerTaskResponse) (*aggregator.SignedTaskResponse, error) {
 	taskResponseHash, err := core.GetTaskResponseDigest(taskResponse)
 	if err != nil {
 		o.logger.Error("Error getting task response header hash. skipping task (this is not expected and should be investigated)", "err", err)
